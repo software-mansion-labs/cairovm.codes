@@ -73,7 +73,6 @@ export const Tracer = () => {
     errorCasmInstructionIndex,
     currentSierraVariables,
     activeSierraIndexes,
-    proof,
     compilationState,
   } = useContext(CairoVMApiContext)
 

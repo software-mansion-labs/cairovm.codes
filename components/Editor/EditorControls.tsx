@@ -5,13 +5,13 @@ import { Priority, useRegisterActions } from 'kbar'
 import { OnChangeValue } from 'react-select'
 
 import { Button, Input } from 'components/ui'
+import { Checkbox } from 'components/ui/Checkbox'
 import MultiButton from 'components/ui/MultiButton'
 
 import { cn } from '../../util/styles'
 
-import ExampleSelector, { MobileExampleSelector } from './ExampleSelector'
-import { Checkbox } from 'components/ui/Checkbox'
 import { Examples, ProveExamples } from './examples'
+import { ExampleSelector, MobileExampleSelector } from './ExampleSelector'
 
 type SelectOption = {
   value: number

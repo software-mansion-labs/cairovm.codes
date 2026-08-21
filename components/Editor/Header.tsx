@@ -1,4 +1,4 @@
-import { useMemo, useId, useContext } from 'react'
+import { useMemo, useId } from 'react'
 
 import Image from 'next/image'
 import cairoLogo from 'public/cairo_logo.png'
