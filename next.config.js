@@ -4,6 +4,7 @@
 
 module.exports = {
   reactStrictMode: true,
+  output: 'standalone',
   serverRuntimeConfig: {
     APP_ROOT: __dirname,
   },

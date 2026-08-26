@@ -1,0 +1,23 @@
+# Everything here is either rebuilt inside the image or has no business in it.
+# node_modules especially: copying a host-built tree over the one from `npm ci`
+# is how a native module compiled for macOS ends up in a Linux image.
+node_modules
+.next
+out
+
+.git
+.github
+.husky
+.vscode
+
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+
+# Not used by the app at runtime - the MDX under docs/ is inherited from
+# evm.codes and nothing imports it - and it is the largest thing in the repo.
+docs
+
+.env*.local
+README.md
+LICENSE

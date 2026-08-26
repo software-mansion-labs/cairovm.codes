@@ -1,11 +1,116 @@
 name: Release
 
+# Builds the image and pushes it to Artifact Registry. It does NOT deploy.
+#
+# Deploying is a deliberate, separate step performed from walnut-infra:
+# `terraform apply -var cairovm_image=<the image printed in the run summary>`.
+# Until that runs at least once, the Cloud Run service serves Google's
+# placeholder container - see walnut-infra/variables.tf.
+#
+# This is the third repository to release this way; starknet-debugger-server and
+# starknet-debugger-app carry the same workflow.
+
 on:
+  push:
+    tags: ["v[0-9]+.*"]
   workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required to mint the Workload Identity token
+
+env:
+  REGION: us-central1
+  IMAGE: us-central1-docker.pkg.dev/software-mansion-dev/walnut/cairovm-codes
 
 jobs:
   release:
-    name: hello
+    name: build and push
     runs-on: ubuntu-latest
     steps:
-      - run: echo "hello"
+      - uses: actions/checkout@v4
+
+      # No service account key anywhere: the identity pool provider in
+      # walnut-infra/iam.tf is locked to this repository by name, and this
+      # repository has its own deployer service account so a token minted here
+      # cannot push under another service's image name.
+      #
+      # Both variables are repository-level Actions *variables*, not secrets,
+      # and both come from `terraform output` in walnut-infra:
+      #
+      #   WIF_PROVIDER -> workload_identity_provider
+      #   DEPLOYER_SA  -> cairovm_deployer_service_account
+      #
+      # Note this repository is a fork: only the software-mansion-labs remote is
+      # admitted to the pool, so a run on walnuthq/cairovm.codes cannot
+      # authenticate here. That is intended, not a misconfiguration.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.DEPLOYER_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - uses: docker/setup-buildx-action@v3
+
+      # On a tag push github.ref_name is the tag (v1.2.3), but on a manual
+      # dispatch it is the branch name - and a branch name may contain "/",
+      # which is not a legal character in a Docker tag. Manual runs are tagged
+      # with the commit SHA instead, which is also how walnut-infra pins the
+      # image it deploys.
+      #
+      # "latest" is only moved by a real release. A dispatch from a branch must
+      # not repoint the tag that releases track.
+      #
+      # There are no tags in this repository yet, so the first image will come
+      # from a workflow_dispatch and be named after its commit. That is a fine
+      # thing to deploy - walnut-infra pins by digest-free tag either way.
+      - name: Resolve image tags
+        id: tags
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            tag="$GITHUB_REF_NAME"
+          else
+            tag="$GITHUB_SHA"
+          fi
+          {
+            echo "image=${IMAGE}:${tag}"
+            echo "list<<EOF"
+            echo "${IMAGE}:${tag}"
+            if [ "$GITHUB_REF_TYPE" = tag ]; then
+              echo "${IMAGE}:latest"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          provenance: false
+          tags: ${{ steps.tags.outputs.list }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_CAIRO_VM_API_URL=${{ vars.NEXT_PUBLIC_CAIRO_VM_API_URL || 'wss://codeapi.starkloupe.co/ws' }}
+
+      - name: Pushed image
+        env:
+          PUSHED_IMAGE: ${{ steps.tags.outputs.image }}
+        run: |
+          {
+            echo "### Image pushed"
+            echo
+            echo '```'
+            echo "${PUSHED_IMAGE}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
