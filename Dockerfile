@@ -3,11 +3,8 @@
 # The contract that file expects: the server listens on 8080, on every
 # interface, and the image starts it with no arguments.
 #
-# There is no .nvmrc in this repository. CI (.github/workflows/ci.yml) lints on
-# Node 18; this pins 20, the maintained LTS closest to it, so the image is not
-# built on a version nothing else validates. If a .nvmrc is ever added, this
-# should follow it.
-ARG NODE_VERSION=20.18.0
+# Node version: keep this in sync with .nvmrc
+ARG NODE_VERSION=24.19.0
 
 FROM node:${NODE_VERSION}-slim AS deps
 WORKDIR /app
