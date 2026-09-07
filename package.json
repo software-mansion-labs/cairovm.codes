@@ -2,7 +2,7 @@
   "name": "cairovm.codes",
   "version": "0.1.0",
   "description": "An interactive reference to Cairo Virtual Machine",
-  "homepage": "https://github.com/walnuthq/cairovm.codes",
+  "homepage": "https://github.com/software-mansion-labs/cairovm.codes",
   "license": "MIT",
   "scripts": {
     "build": "next build",
