@@ -35,29 +35,7 @@ Start up the app and see it running at http://localhost:3000
 
 ## 🚀 Deploying
 
-Deployments are handled automatically by [Cloudflare](https://www.cloudflare.com/), as soon as your PR is merged to `main`.
-
-## 🤗 Contributing
-
-cairovm.codes is built and maintained by a small team, so we would definitely love your help to fix bugs, add new features and improvements. Head on to the [issues tab](https://github.com/software-mansion-labs/cairovm.codes/issues) to find a list of open contributions.
-
-Before you submit a pull request, please make sure there isn't an existing [GitHub issue](https://github.com/software-mansion-labs/cairovm.codes/issues). If there isn't, create one first to discuss the best way to approach it and also get some feedback from the team.
-
-Once you are about to submit a pull request, prefix the name with either `chore:` (small improvements and regular maintenance), `fix:` (bugs and hot fixes), or `feat:` (new features) to help us quickly look up the type of the issue from the Git history.
-
-### Assigning to an issue
-
-If this is your first issue on cairovm.codes, add a comment with the following:
-
-- Present yourself briefly
-- Mention you want to work on the issue and explain shortly how you want to tackle it
-- When you are selected, you will be assigned to the issue
-
-If this is not your first issue, simply add a comment that you are interested in working on it. 
-
-### Contributor's chat
-
-Join us on Telegram [here](https://t.me/+DYI4FMia43I1NDI8). Do not hesitate to ask any question, we will do our best to answer in the best way we can.
+Check [release workflow](.github/workflows/release.yml) for more information.
 
 ### Coding conventions
 
@@ -65,7 +43,7 @@ The project is already pre-configured with [Eslint](.eslintrc.js), [TypeScript](
 
 Check for any linting issues and fix:
 
-    npm run lint --fix
+    npm run lint:fix
 
 Check for any TypeScript issues:
 

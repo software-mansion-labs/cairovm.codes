@@ -52,7 +52,10 @@ const AboutCairoVMBanner = () => {
           >
             Software Mansion
           </a>
-          , this app enables seamless compilation of Cairo programs into Sierra and CASM. With step-through execution for Cairo, Sierra, and CASM, it empowers developers to explore and understand the inner workings of the Cairo Virtual Machine.
+          , this app enables seamless compilation of Cairo programs into Sierra
+          and CASM. With step-through execution for Cairo, Sierra, and CASM, it
+          empowers developers to explore and understand the inner workings of
+          the Cairo Virtual Machine.
         </p>
       </div>
     </div>
