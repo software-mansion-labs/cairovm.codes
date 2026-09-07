@@ -23,7 +23,7 @@ For contributing to the project, you can quickly get the application running by 
 
 Clone this repository:
 
-    git clone git@github.com:walnuthq/cairovm.codes.git
+    git clone git@github.com:software-mansion-labs/cairovm.codes.git
 
 Install the dependencies:
 
@@ -39,9 +39,9 @@ Deployments are handled automatically by [Cloudflare](https://www.cloudflare.com
 
 ## 🤗 Contributing
 
-cairovm.codes is built and maintained by a small team, so we would definitely love your help to fix bugs, add new features and improvements. Head on to the [issues tab](https://github.com/walnuthq/cairovm.codes/issues) to find a list of open contributions.
+cairovm.codes is built and maintained by a small team, so we would definitely love your help to fix bugs, add new features and improvements. Head on to the [issues tab](https://github.com/software-mansion-labs/cairovm.codes/issues) to find a list of open contributions.
 
-Before you submit a pull request, please make sure there isn't an existing [GitHub issue](https://github.com/walnuthq/cairovm.codes/issues). If there isn't, create one first to discuss the best way to approach it and also get some feedback from the team.
+Before you submit a pull request, please make sure there isn't an existing [GitHub issue](https://github.com/software-mansion-labs/cairovm.codes/issues). If there isn't, create one first to discuss the best way to approach it and also get some feedback from the team.
 
 Once you are about to submit a pull request, prefix the name with either `chore:` (small improvements and regular maintenance), `fix:` (bugs and hot fixes), or `feat:` (new features) to help us quickly look up the type of the issue from the Git history.
 
