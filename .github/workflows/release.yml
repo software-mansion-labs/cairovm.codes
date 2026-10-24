@@ -2,10 +2,11 @@ name: Release
 
 # Builds the image and pushes it to Artifact Registry. It does NOT deploy.
 #
-# Deploying is a deliberate, separate step performed from walnut-infra:
-# `terraform apply -var cairovm_image=<the image printed in the run summary>`.
-# Until that runs at least once, the Cloud Run service serves Google's
-# placeholder container - see walnut-infra/variables.tf.
+# Runs only for a `v*` tag on a commit that is on main; any other tag fails
+# before building. The release then asks starkloupe-infra to promote the
+# image: a repository_dispatch there records its digest in a pull request
+# against releases/cairovm-codes.json. Merging that and running
+# starkloupe-infra's Terraform Apply workflow is what deploys it.
 #
 # This is the third repository to release this way; starknet-debugger-server and
 # starknet-debugger-app carry the same workflow.
@@ -13,7 +14,6 @@ name: Release
 on:
   push:
     tags: ["v[0-9]+.*"]
-  workflow_dispatch:
 
 concurrency:
   group: release
@@ -22,6 +22,7 @@ concurrency:
 permissions:
   contents: read
   id-token: write # required to mint the Workload Identity token
+  attestations: write # sign the image's build provenance
 
 env:
   REGION: us-central1
@@ -32,6 +33,20 @@ jobs:
     name: build and push
     runs-on: ubuntu-latest
     steps:
+      # Every image this workflow pushes is dispatched to starkloupe-infra for
+      # promotion, so it only builds a tag on a commit that has landed on main.
+      # Compared on GitHub rather than with git, so the checkout stays shallow:
+      # `main...<sha>` is "identical" or "behind" exactly when <sha> is in main.
+      - name: Require the tag to be on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          status="$(gh api "repos/${GITHUB_REPOSITORY}/compare/main...${GITHUB_SHA}" --jq .status)"
+          if [ "${status}" != identical ] && [ "${status}" != behind ]; then
+            echo "Tag ${GITHUB_REF_NAME} points at ${GITHUB_SHA}, which is not on main (${status})."
+            exit 1
+          fi
+
       - uses: actions/checkout@v4
 
       # No service account key anywhere: the identity pool provider in
@@ -61,37 +76,22 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
-      # On a tag push github.ref_name is the tag (v1.2.3), but on a manual
-      # dispatch it is the branch name - and a branch name may contain "/",
-      # which is not a legal character in a Docker tag. Manual runs are tagged
-      # with the commit SHA instead, which is also how walnut-infra pins the
-      # image it deploys.
-      #
-      # "latest" is only moved by a real release. A dispatch from a branch must
-      # not repoint the tag that releases track.
-      #
-      # There are no tags in this repository yet, so the first image will come
-      # from a workflow_dispatch and be named after its commit. That is a fine
-      # thing to deploy - walnut-infra pins by digest-free tag either way.
+      # Named after the release tag. git-<sha> is the tag starkloupe-infra's
+      # promotion cross-checks against the digest it is sent.
       - name: Resolve image tags
         id: tags
         run: |
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            tag="$GITHUB_REF_NAME"
-          else
-            tag="$GITHUB_SHA"
-          fi
           {
-            echo "image=${IMAGE}:${tag}"
+            echo "image=${IMAGE}:${GITHUB_REF_NAME}"
             echo "list<<EOF"
-            echo "${IMAGE}:${tag}"
-            if [ "$GITHUB_REF_TYPE" = tag ]; then
-              echo "${IMAGE}:latest"
-            fi
+            echo "${IMAGE}:${GITHUB_REF_NAME}"
+            echo "${IMAGE}:latest"
+            echo "${IMAGE}:git-${GITHUB_SHA}"
             echo "EOF"
           } >> "$GITHUB_OUTPUT"
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -102,6 +102,16 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             NEXT_PUBLIC_CAIRO_VM_API_URL=${{ vars.NEXT_PUBLIC_CAIRO_VM_API_URL || 'wss://codeapi.starkloupe.co/ws' }}
+
+      # starkloupe-infra will only promote this digest if GitHub has signed
+      # provenance for it from this repository's release workflow. A workflow in
+      # another repository can push under this image name, but cannot produce
+      # that signature.
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.build.outputs.digest }}
 
       - name: Pushed image
         env:
@@ -114,3 +124,25 @@ jobs:
             echo "${PUSHED_IMAGE}"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create starkloupe-infra dispatch token
+        id: infra-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.INFRA_APP_ID }}
+          private-key: ${{ secrets.INFRA_APP_PRIVATE_KEY }}
+          owner: software-mansion
+          repositories: starkloupe-infra
+          permission-contents: write
+
+      - name: Request promotion in starkloupe-infra
+        env:
+          GH_TOKEN: ${{ steps.infra-token.outputs.token }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          gh api \
+            --method POST \
+            repos/software-mansion/starkloupe-infra/dispatches \
+            --field event_type=cairovm-codes-release \
+            --field "client_payload[source_commit]=${GITHUB_SHA}" \
+            --field "client_payload[digest]=${DIGEST}"
